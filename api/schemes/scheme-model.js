@@ -23,7 +23,6 @@ function find() {
     .groupBy('sc.scheme_id')
     .orderBy('sc.scheme_id')
     .select('sc.*', db.raw('count(st.step_id) as number_of_steps'));
-  //  return db("schemes as sc").leftJoin("steps as st", "sc.scheme_id", "st.scheme_id").groupBy("sc.scheme_id").orderBy("sc.scheme_id", "asc").count('st.step_id as number_of_steps').select("sc.*", "number_of_steps");
 }
 
 function findById(scheme_id) {
@@ -93,6 +92,25 @@ function findById(scheme_id) {
         "steps": []
       }
   */
+  return db('schemes as sc')
+    .leftJoin('steps as st', 'st.scheme_id', 'sc.scheme_id')
+    .orderBy('st.step_number')
+    .where('sc.scheme_id', scheme_id)
+    .select('st.*', 'sc.*')
+    .then((rows) => {
+      return {
+        scheme_id: rows[0].scheme_id,
+        scheme_name: rows[0].scheme_name,
+        steps:
+          (rows[0]?.step_id &&
+            rows.map((row) => ({
+              step_id: row.step_id,
+              step_number: row.step_number,
+              instructions: row.instructions,
+            }))) ||
+          [],
+      };
+    });
 }
 
 function findSteps(scheme_id) {
@@ -117,6 +135,7 @@ function findSteps(scheme_id) {
         }
       ]
   */
+  return db('steps').where('scheme_id', scheme_id)
 }
 
 function add(scheme) {
@@ -124,6 +143,9 @@ function add(scheme) {
   /*
     1D- This function creates a new scheme and resolves to _the newly created scheme_.
   */
+  return db('schemes').insert(scheme).then(([id]) => {
+    return db('schemes').where('scheme_id', id).first()
+  })
 }
 
 function addStep(scheme_id, step) {
