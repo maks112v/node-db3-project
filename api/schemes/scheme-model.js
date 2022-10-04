@@ -107,6 +107,7 @@ function findById(scheme_id) {
               step_id: row.step_id,
               step_number: row.step_number,
               instructions: row.instructions,
+              scheme_name: row.scheme_name,
             }))) ||
           [],
       };
@@ -135,7 +136,11 @@ function findSteps(scheme_id) {
         }
       ]
   */
-  return db('steps').where('scheme_id', scheme_id)
+  return db('schemes as sc')
+    .join('steps as st', 'st.scheme_id', 'sc.scheme_id')
+    .where('sc.scheme_id', scheme_id)
+    .orderBy('st.step_number')
+    .select('st.*', 'sc.scheme_name');
 }
 
 function add(scheme) {
@@ -143,9 +148,11 @@ function add(scheme) {
   /*
     1D- This function creates a new scheme and resolves to _the newly created scheme_.
   */
-  return db('schemes').insert(scheme).then(([id]) => {
-    return db('schemes').where('scheme_id', id).first()
-  })
+  return db('schemes')
+    .insert(scheme)
+    .then(([id]) => {
+      return db('schemes').where('scheme_id', id).first();
+    });
 }
 
 function addStep(scheme_id, step) {
@@ -155,6 +162,17 @@ function addStep(scheme_id, step) {
     and resolves to _all the steps_ belonging to the given `scheme_id`,
     including the newly created one.
   */
+  return db('steps')
+    .insert({
+      scheme_id: scheme_id,
+      ...step,
+    })
+    .then(() => {
+      return db('steps')
+        .where('scheme_id', scheme_id)
+        .orderBy('step_number')
+        .select('instructions', 'step_number');
+    });
 }
 
 module.exports = {
